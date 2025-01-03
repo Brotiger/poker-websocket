@@ -2,11 +2,12 @@ package router
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/Brotiger/poker-websocket/internal/model"
 	"github.com/Brotiger/poker-websocket/internal/module/lobby/controller"
+	"github.com/Brotiger/poker-websocket/internal/response"
 	"github.com/gofiber/contrib/websocket"
+	log "github.com/sirupsen/logrus"
 )
 
 type Router struct {
@@ -19,23 +20,30 @@ func NewRouter() *Router {
 	}
 }
 
-func (r *Router) ProcessMessage(c *websocket.Conn) error {
+func (r *Router) ProcessMessage(c *websocket.Conn) {
+	var res response.Response
+	res = &response.InternalServerError{}
+
+	defer func() {
+		res.Send(c)
+	}()
+
 	_, msg, err := c.ReadMessage()
 	if err != nil {
-		return fmt.Errorf("failed to read message, error: %w", err)
+		log.Errorf("failed to read message, error: %v", err)
+		return
 	}
 
 	var modelMessage model.Message
 	if err := json.Unmarshal(msg, &modelMessage); err != nil {
-		return fmt.Errorf("failed to unmarshal message, error: %w", err)
+		log.Errorf("failed to unmarshal message, error: %v", err)
+		return
 	}
 
 	switch modelMessage.Type {
 	case "join":
-		if err := r.lobbyController.Join(c); err != nil {
-			return fmt.Errorf("failed to join, error: %w", err)
-		}
+		res = r.lobbyController.Join(c, msg)
 	}
 
-	return nil
+	log.Errorf("undefined message type, error: %v", err)
 }

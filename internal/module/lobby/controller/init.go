@@ -1,7 +1,13 @@
 package controller
 
-type LobbyController struct{}
+import "github.com/Brotiger/poker-websocket/internal/middleware"
+
+type LobbyController struct {
+	authMiddleware *middleware.AuthMiddleware
+}
 
 func NewLobbyController() *LobbyController {
-	return &LobbyController{}
+	return &LobbyController{
+		authMiddleware: middleware.NewAuthMiddleware(),
+	}
 }

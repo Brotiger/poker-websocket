@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Brotiger/poker-core_api/pkg/mongodb"
+	mongodb "github.com/Brotiger/poker-core_api/pkg/mongodb/connection"
 	"github.com/Brotiger/poker-websocket/internal/config"
 	"github.com/Brotiger/poker-websocket/internal/connection"
 	"github.com/Brotiger/poker-websocket/internal/router"
@@ -51,9 +51,7 @@ func main() {
 		log.Info("WebSocket connection opened")
 
 		for {
-			if err := router.ProcessMessage(c); err != nil {
-				log.Errorf("failed to process message, error: %v", err)
-			}
+			router.ProcessMessage(c)
 		}
 	}))
 
