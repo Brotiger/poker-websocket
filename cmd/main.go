@@ -51,7 +51,7 @@ func main() {
 		log.Info("WebSocket connection opened")
 
 		for {
-			router.ProcessMessage(c)
+			router.ProcessMessage(ctx, c)
 		}
 	}))
 

@@ -1,13 +1,15 @@
 package router
 
 import (
+	"context"
 	"encoding/json"
 
-	"github.com/Brotiger/poker-websocket/internal/model"
 	"github.com/Brotiger/poker-websocket/internal/module/lobby/controller"
+	"github.com/Brotiger/poker-websocket/internal/request"
 	"github.com/Brotiger/poker-websocket/internal/response"
 	"github.com/gofiber/contrib/websocket"
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type Router struct {
@@ -20,30 +22,47 @@ func NewRouter() *Router {
 	}
 }
 
-func (r *Router) ProcessMessage(c *websocket.Conn) {
-	var res response.Response
-	res = &response.InternalServerError{}
-
-	defer func() {
-		res.Send(c)
-	}()
-
+func (r *Router) ProcessMessage(ctx context.Context, c *websocket.Conn) {
 	_, msg, err := c.ReadMessage()
 	if err != nil {
 		log.Errorf("failed to read message, error: %v", err)
+		if err := c.WriteJSON(response.Respons{
+			Header: response.Header{
+				Code: 500,
+			},
+		}); err != nil {
+			log.Errorf("failed to write response, error: %v", err)
+		}
 		return
 	}
 
-	var modelMessage model.Message
-	if err := json.Unmarshal(msg, &modelMessage); err != nil {
+	var requestMessage request.Message
+	if err := json.Unmarshal(msg, &requestMessage); err != nil {
 		log.Errorf("failed to unmarshal message, error: %v", err)
+		if err := c.WriteJSON(response.Respons{
+			Header: response.Header{
+				Code: 500,
+			},
+		}); err != nil {
+			log.Errorf("failed to write response, error: %v", err)
+		}
 		return
 	}
 
-	switch modelMessage.Type {
+	switch requestMessage.Event {
 	case "join":
-		res = r.lobbyController.Join(c, msg)
+		r.lobbyController.Join(ctx, c, msg)
+		return
 	}
 
-	log.Errorf("undefined message type, error: %v", err)
+	if err := c.WriteJSON(response.Respons{
+		Header: response.Header{
+			Code: 404,
+		},
+		Body: bson.M{
+			"message": "Неизвестный тип ивента.",
+		},
+	}); err != nil {
+		log.Errorf("failed to write response, error: %v", err)
+	}
 }

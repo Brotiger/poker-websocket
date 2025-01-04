@@ -1,13 +1,18 @@
 package controller
 
-import "github.com/Brotiger/poker-websocket/internal/middleware"
+import (
+	pkgService "github.com/Brotiger/poker-core_api/pkg/service"
+	"github.com/Brotiger/poker-websocket/internal/module/lobby/service"
+)
 
 type LobbyController struct {
-	authMiddleware *middleware.AuthMiddleware
+	tokenService *pkgService.TokenService
+	userService  *service.UserService
 }
 
 func NewLobbyController() *LobbyController {
 	return &LobbyController{
-		authMiddleware: middleware.NewAuthMiddleware(),
+		tokenService: pkgService.NewTokenService(),
+		userService:  service.NewUserService(),
 	}
 }

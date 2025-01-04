@@ -3,7 +3,7 @@ module github.com/Brotiger/poker-websocket
 go 1.22.0
 
 require (
-	github.com/Brotiger/poker-core_api v0.0.3
+	github.com/Brotiger/poker-core_api v0.0.5
 	github.com/caarlos0/env/v7 v7.1.0
 	github.com/gofiber/contrib/websocket v1.3.2
 	github.com/gofiber/fiber/v2 v2.52.6
