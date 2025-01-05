@@ -11,6 +11,7 @@ import (
 	"github.com/Brotiger/poker-websocket/internal/response"
 	"github.com/Brotiger/poker-websocket/internal/storage"
 	"github.com/gofiber/contrib/websocket"
+	"github.com/gofiber/fiber/v2"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -22,7 +23,7 @@ func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []by
 		log.Errorf("failed to unmarshal json, error: %v", err)
 		c.WriteJSON(response.Respons{
 			Header: response.Header{
-				Code: 500,
+				Code: fiber.StatusInternalServerError,
 			},
 		})
 		return
@@ -32,7 +33,7 @@ func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []by
 	if err != nil {
 		c.WriteJSON(response.Respons{
 			Header: response.Header{
-				Code: 400,
+				Code: fiber.StatusBadRequest,
 			},
 			Body: bson.M{
 				"message": "Неверный формат токена.",
@@ -45,7 +46,7 @@ func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []by
 		if errors.Is(err, service.ErrInvalidToken) {
 			c.WriteJSON(response.Respons{
 				Header: response.Header{
-					Code: 401,
+					Code: fiber.StatusUnauthorized,
 				},
 				Body: bson.M{
 					"message": "Просроченный токен доступа.",
@@ -56,7 +57,7 @@ func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []by
 
 		c.WriteJSON(response.Respons{
 			Header: response.Header{
-				Code: 400,
+				Code: fiber.StatusBadRequest,
 			},
 			Body: bson.M{
 				"message": "Невалидный токен.",
@@ -70,13 +71,11 @@ func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []by
 		log.Errorf("failed to convert user id to object id, error: %v", err)
 		c.WriteJSON(response.Respons{
 			Header: response.Header{
-				Code: 500,
+				Code: fiber.StatusInternalServerError,
 			},
 		})
 		return
 	}
-
-	storage.WebSocketClients[requestJoin.Body.GameId][c] = userId
 
 	for client, userId := range storage.WebSocketClients[requestJoin.Body.GameId] {
 		modelUser, err := lc.userService.GetUserById(ctx, userId)
@@ -87,7 +86,7 @@ func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []by
 
 		client.WriteJSON(response.Respons{
 			Header: response.Header{
-				Code:  200,
+				Code:  fiber.StatusOK,
 				Event: "join",
 			},
 			Body: bson.M{
@@ -95,4 +94,6 @@ func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []by
 			},
 		})
 	}
+
+	storage.WebSocketClients[requestJoin.Body.GameId][c] = userId
 }

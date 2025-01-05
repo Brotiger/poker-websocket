@@ -8,6 +8,7 @@ import (
 	"github.com/Brotiger/poker-websocket/internal/request"
 	"github.com/Brotiger/poker-websocket/internal/response"
 	"github.com/gofiber/contrib/websocket"
+	"github.com/gofiber/fiber/v2"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -28,7 +29,7 @@ func (r *Router) ProcessMessage(ctx context.Context, c *websocket.Conn) {
 		log.Errorf("failed to read message, error: %v", err)
 		if err := c.WriteJSON(response.Respons{
 			Header: response.Header{
-				Code: 500,
+				Code: fiber.StatusInternalServerError,
 			},
 		}); err != nil {
 			log.Errorf("failed to write response, error: %v", err)
@@ -41,7 +42,7 @@ func (r *Router) ProcessMessage(ctx context.Context, c *websocket.Conn) {
 		log.Errorf("failed to unmarshal message, error: %v", err)
 		if err := c.WriteJSON(response.Respons{
 			Header: response.Header{
-				Code: 500,
+				Code: fiber.StatusInternalServerError,
 			},
 		}); err != nil {
 			log.Errorf("failed to write response, error: %v", err)
@@ -57,7 +58,7 @@ func (r *Router) ProcessMessage(ctx context.Context, c *websocket.Conn) {
 
 	if err := c.WriteJSON(response.Respons{
 		Header: response.Header{
-			Code: 404,
+			Code: fiber.StatusNotFound,
 		},
 		Body: bson.M{
 			"message": "Неизвестный тип ивента.",

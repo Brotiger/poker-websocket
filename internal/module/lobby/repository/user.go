@@ -6,6 +6,7 @@ import (
 
 	"github.com/Brotiger/poker-websocket/internal/config"
 	"github.com/Brotiger/poker-websocket/internal/connection"
+	cError "github.com/Brotiger/poker-websocket/internal/module/lobby/error"
 	"github.com/Brotiger/poker-websocket/internal/module/lobby/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -27,7 +28,7 @@ func (r *UserRepository) FindUserById(ctx context.Context, id primitive.ObjectID
 		},
 	).Decode(&modelUser); err != nil {
 		if err == mongo.ErrNoDocuments {
-
+			return nil, cError.ErrUserNotFound
 		}
 
 		return nil, fmt.Errorf("failed to find one, error: %w", err)
