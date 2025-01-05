@@ -6,8 +6,8 @@ import (
 
 type Join struct {
 	Header struct {
-		AccessToken string `json:"access_token"`
-		JoinToken   string `json:"join_token"`
+		AccessToken  string `json:"access_token"`
+		ConnectToken string `json:"connect_token"`
 	} `json:"header"`
 	Body struct {
 		GameId primitive.ObjectID `json:"game_id"`

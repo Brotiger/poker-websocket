@@ -6,13 +6,15 @@ import (
 )
 
 type LobbyController struct {
-	tokenService *pkgService.TokenService
-	userService  *service.UserService
+	tokenService        *pkgService.TokenService
+	userService         *service.UserService
+	ConnectTokenService *service.ConnectTokenService
 }
 
 func NewLobbyController() *LobbyController {
 	return &LobbyController{
-		tokenService: pkgService.NewTokenService(),
-		userService:  service.NewUserService(),
+		tokenService:        pkgService.NewTokenService(),
+		userService:         service.NewUserService(),
+		ConnectTokenService: service.NewConnectTokenService(),
 	}
 }

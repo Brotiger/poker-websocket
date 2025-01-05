@@ -6,15 +6,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Brotiger/poker-core_api/pkg/service"
+	coreApiService "github.com/Brotiger/poker-core_api/pkg/service"
+	"github.com/Brotiger/poker-websocket/internal/config"
 	"github.com/Brotiger/poker-websocket/internal/module/lobby/request"
+	"github.com/Brotiger/poker-websocket/internal/module/lobby/service"
 	"github.com/Brotiger/poker-websocket/internal/response"
 	"github.com/Brotiger/poker-websocket/internal/storage"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []byte) {
@@ -41,9 +42,9 @@ func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []by
 		})
 	}
 
-	tokenClaims, err := lc.tokenService.VerifyToken(token)
+	tokenClaims, err := lc.tokenService.VerifyToken(token, config.Cfg.JWT.Secret)
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidToken) {
+		if errors.Is(err, coreApiService.ErrInvalidToken) {
 			c.WriteJSON(response.Respons{
 				Header: response.Header{
 					Code: fiber.StatusUnauthorized,
@@ -66,16 +67,11 @@ func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []by
 		return
 	}
 
-	userId, err := primitive.ObjectIDFromHex(tokenClaims.UserId)
-	if err != nil {
-		log.Errorf("failed to convert user id to object id, error: %v", err)
-		c.WriteJSON(response.Respons{
-			Header: response.Header{
-				Code: fiber.StatusInternalServerError,
-			},
-		})
-		return
-	}
+	lc.ConnectTokenService.VerifyToken(ctx, service.RequestVerifyTokenDTO{
+		Token:  requestJoin.Header.ConnectToken,
+		GameId: requestJoin.Body.GameId,
+		UserId: tokenClaims.UserId,
+	})
 
 	for client, userId := range storage.WebSocketClients[requestJoin.Body.GameId] {
 		modelUser, err := lc.userService.GetUserById(ctx, userId)
@@ -95,5 +91,5 @@ func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []by
 		})
 	}
 
-	storage.WebSocketClients[requestJoin.Body.GameId][c] = userId
+	storage.WebSocketClients[requestJoin.Body.GameId][c] = tokenClaims.UserId
 }
