@@ -106,8 +106,19 @@ func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []by
 		return
 	}
 
-	for _, conn := range lc.WebSocketStorage.GameIdConn[requestJoin.Body.GameId] {
-		conn.WriteJSON(response.Respons{
+	connections, err := lc.WebSocketStorage.GetConnByGameId(requestJoin.Body.GameId)
+	if err != nil {
+		log.Errorf("failed to get conn by game id, error: %v", err)
+		c.WriteJSON(response.Respons{
+			Header: response.Header{
+				Code: fiber.StatusInternalServerError,
+			},
+		})
+		return
+	}
+
+	for _, connection := range connections {
+		connection.WriteJSON(response.Respons{
 			Header: response.Header{
 				Code:  fiber.StatusOK,
 				Event: "join",
