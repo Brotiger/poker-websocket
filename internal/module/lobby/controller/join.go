@@ -134,8 +134,8 @@ func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []by
 	}
 
 	lc.WebSocketStorage.AddConn(storage.RequestAddConn{
-		GameId: requestJoin.Body.GameId,
-		UserId: tokenClaims.UserId,
-		Socket: c,
+		GameId:     requestJoin.Body.GameId,
+		UserId:     tokenClaims.UserId,
+		Connection: c,
 	})
 }

@@ -10,42 +10,46 @@ import (
 
 // @todo добавить мьютекс
 type WebSocketStorage struct {
-	gameIdConnMap map[*websocket.Conn]int
-	gameIdConn    map[primitive.ObjectID][]*websocket.Conn
-	connGameId    map[*websocket.Conn]primitive.ObjectID
-	connUserId    map[*websocket.Conn]primitive.ObjectID
-	mux           sync.Mutex
+	connectionInGameMap map[*websocket.Conn]int
+	gameIdConnections   map[primitive.ObjectID][]*websocket.Conn
+
+	connGameId map[*websocket.Conn]primitive.ObjectID
+	connUserId map[*websocket.Conn]primitive.ObjectID
+	mux        sync.Mutex
 }
 
 func NewWebSockeStorage() *WebSocketStorage {
 	return &WebSocketStorage{
-		gameIdConn: make(map[primitive.ObjectID][]*websocket.Conn),
+		connectionInGameMap: make(map[*websocket.Conn]int),
+		gameIdConnections:   make(map[primitive.ObjectID][]*websocket.Conn),
+
 		connGameId: make(map[*websocket.Conn]primitive.ObjectID),
 		connUserId: make(map[*websocket.Conn]primitive.ObjectID),
 	}
 }
 
 type RequestAddConn struct {
-	GameId primitive.ObjectID
-	UserId primitive.ObjectID
-	Socket *websocket.Conn
+	GameId     primitive.ObjectID
+	UserId     primitive.ObjectID
+	Connection *websocket.Conn
 }
 
 func (wss *WebSocketStorage) AddConn(requestAddConn RequestAddConn) {
 	wss.mux.Lock()
 	defer wss.mux.Unlock()
 
-	wss.gameIdConn[requestAddConn.GameId] = append(wss.gameIdConn[requestAddConn.GameId], requestAddConn.Socket)
-	wss.gameIdConnMap[requestAddConn.Socket] = len(wss.gameIdConn[requestAddConn.GameId])
-	wss.connGameId[requestAddConn.Socket] = requestAddConn.GameId
-	wss.connUserId[requestAddConn.Socket] = requestAddConn.UserId
+	wss.gameIdConnections[requestAddConn.GameId] = append(wss.gameIdConnections[requestAddConn.GameId], requestAddConn.Connection)
+	wss.connectionInGameMap[requestAddConn.Connection] = len(wss.gameIdConnections[requestAddConn.GameId]) - 1
+
+	wss.connGameId[requestAddConn.Connection] = requestAddConn.GameId
+	wss.connUserId[requestAddConn.Connection] = requestAddConn.UserId
 }
 
 func (wss *WebSocketStorage) DeleteConn(c *websocket.Conn) error {
 	wss.mux.Lock()
 	defer wss.mux.Unlock()
 
-	index, ok := wss.gameIdConnMap[c]
+	connectionInGameIndex, ok := wss.connectionInGameMap[c]
 	if !ok {
 		return fmt.Errorf("failed to get conn map by game id")
 	}
@@ -55,7 +59,7 @@ func (wss *WebSocketStorage) DeleteConn(c *websocket.Conn) error {
 		return fmt.Errorf("failed to get game id by conn")
 	}
 
-	conn, ok := wss.gameIdConn[gameId]
+	gameConnections, ok := wss.gameIdConnections[gameId]
 	if !ok {
 		return fmt.Errorf("failed to get conn by game id")
 	}
@@ -63,7 +67,7 @@ func (wss *WebSocketStorage) DeleteConn(c *websocket.Conn) error {
 	delete(wss.connGameId, c)
 	delete(wss.connUserId, c)
 
-	conn[len(conn)-1], conn[index] = conn[index], conn[len(conn)-1]
+	gameConnections[len(gameConnections)-1], gameConnections[connectionInGameIndex] = gameConnections[connectionInGameIndex], gameConnections[len(gameConnections)-1]
 
 	return nil
 }
@@ -72,7 +76,7 @@ func (wss *WebSocketStorage) GetConnByGameId(gameId primitive.ObjectID) ([]*webs
 	wss.mux.Lock()
 	defer wss.mux.Unlock()
 
-	connection, ok := wss.gameIdConn[gameId]
+	connection, ok := wss.gameIdConnections[gameId]
 	if !ok {
 		return nil, fmt.Errorf("failed to get conn by game id")
 	}
