@@ -40,6 +40,7 @@ func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []by
 				"message": "Неверный формат токена.",
 			},
 		})
+		return
 	}
 
 	tokenClaims, err := lc.tokenService.VerifyToken(token, config.Cfg.JWT.Secret)
@@ -67,29 +68,63 @@ func (lc *LobbyController) Join(ctx context.Context, c *websocket.Conn, msg []by
 		return
 	}
 
-	lc.ConnectTokenService.VerifyToken(ctx, service.RequestVerifyTokenDTO{
+	valid, err := lc.ConnectTokenService.VerifyToken(ctx, service.RequestVerifyTokenDTO{
 		Token:  requestJoin.Header.ConnectToken,
 		GameId: requestJoin.Body.GameId,
 		UserId: tokenClaims.UserId,
 	})
+	if err != nil {
+		log.Errorf("failed to verify token, error: %v", err)
+		c.WriteJSON(response.Respons{
+			Header: response.Header{
+				Code: fiber.StatusInternalServerError,
+			},
+		})
+		return
+	}
 
-	for client, userId := range storage.WebSocketClients[requestJoin.Body.GameId] {
-		modelUser, err := lc.userService.GetUserById(ctx, userId)
-		if err != nil {
-			log.Errorf("failed to get user by id, error: %v", err)
-			continue
-		}
+	if !valid {
+		c.WriteJSON(response.Respons{
+			Header: response.Header{
+				Code: fiber.StatusBadRequest,
+			},
+			Body: bson.M{
+				"message": "Невалидный токен подключения.",
+			},
+		})
+		return
+	}
 
-		client.WriteJSON(response.Respons{
+	modelUser, err := lc.userService.GetUserById(ctx, tokenClaims.UserId)
+	if err != nil {
+		log.Errorf("failed to get user by id, error: %v", err)
+		c.WriteJSON(response.Respons{
+			Header: response.Header{
+				Code: fiber.StatusInternalServerError,
+			},
+		})
+		return
+	}
+
+	for _, conn := range lc.WebSocketStorage.GameIdConn[requestJoin.Body.GameId] {
+		conn.WriteJSON(response.Respons{
 			Header: response.Header{
 				Code:  fiber.StatusOK,
 				Event: "join",
 			},
 			Body: bson.M{
-				"message": fmt.Sprintf("Игрок %s подключился к игре", modelUser.Username),
+				"message": fmt.Sprintf("Игрок %s подключился к игре.", modelUser.Username),
+				"data": bson.M{
+					"id":       modelUser.Id,
+					"username": modelUser.Username,
+				},
 			},
 		})
 	}
 
-	storage.WebSocketClients[requestJoin.Body.GameId][c] = tokenClaims.UserId
+	lc.WebSocketStorage.AddConn(storage.RequestAddConn{
+		GameId: requestJoin.Body.GameId,
+		UserId: tokenClaims.UserId,
+		Socket: c,
+	})
 }

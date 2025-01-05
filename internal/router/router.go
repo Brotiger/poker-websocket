@@ -24,7 +24,7 @@ func NewRouter() *Router {
 }
 
 func (r *Router) ProcessMessage(ctx context.Context, c *websocket.Conn) {
-	_, msg, err := c.ReadMessage()
+	msgType, msg, err := c.ReadMessage()
 	if err != nil {
 		log.Errorf("failed to read message, error: %v", err)
 		if err := c.WriteJSON(response.Respons{
@@ -50,10 +50,15 @@ func (r *Router) ProcessMessage(ctx context.Context, c *websocket.Conn) {
 		return
 	}
 
-	switch requestMessage.Event {
-	case "join":
-		r.lobbyController.Join(ctx, c, msg)
+	if msgType == websocket.TextMessage {
+		if requestMessage.Event == "join" {
+			r.lobbyController.Join(ctx, c, msg)
+			return
+		}
+	} else if msgType == websocket.CloseMessage {
+		r.lobbyController.Disconect(ctx, c, msg)
 		return
+
 	}
 
 	if err := c.WriteJSON(response.Respons{

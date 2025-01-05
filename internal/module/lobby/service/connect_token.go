@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	cError "github.com/Brotiger/poker-websocket/internal/module/lobby/error"
@@ -28,6 +29,10 @@ type RequestVerifyTokenDTO struct {
 func (cts *ConnectTokenService) VerifyToken(ctx context.Context, requestVerifyTokenDTO RequestVerifyTokenDTO) (bool, error) {
 	modelToken, err := cts.connectTokenRepository.FindTokenByToken(ctx, requestVerifyTokenDTO.Token)
 	if err != nil {
+		if errors.Is(err, cError.ErrConnectTokenNotFound) {
+			return false, nil
+		}
+
 		return false, fmt.Errorf("failed to find token by token, error: %w", err)
 	}
 
